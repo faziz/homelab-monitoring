@@ -9,6 +9,7 @@ services:
       - CF_API_EMAIL=${CLOUDFLARE_EMAIL}          # optional but recommended
       - CF_DNS_API_TOKEN=${CF_TOKEN}
       - CF_ZONE_API_TOKEN=${CF_TOKEN}             # same token
+      - TRAEFIK_HOST=${TRAEFIK_HOST}
     command:
       - --log.level=DEBUG
       - --global.sendAnonymousUsage=false
@@ -37,7 +38,7 @@ services:
       - --api.insecure=false
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`straefik.metaconsulting.au`)"
+      - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_HOST}`)"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.tls.certResolver=letsencrypt"
       - "traefik.http.routers.dashboard.service=api@internal"
@@ -57,20 +58,28 @@ services:
     container_name: external-routes
     restart: unless-stopped
     command: ["sh", "-c", "sleep infinity"]
+    environment:
+      - SYNOLOGY_HOST=${SYNOLOGY_HOST}
+      - SYNOLOGY_TARGET_URL=${SYNOLOGY_TARGET_URL}
+      - PORTAINER_HOST=${PORTAINER_HOST}
+      - PORTAINER_TARGET_URL=${PORTAINER_TARGET_URL}
     networks:
       - traefik-net
     labels:
       - "traefik.enable=true"
       # Synology DSM (HTTPS)
-      - "traefik.http.routers.storage.rule=Host(`storage.metaconsulting.au`)"
+      - "traefik.http.routers.storage.rule=Host(`${SYNOLOGY_HOST}`)"
       - "traefik.http.routers.storage.entrypoints=websecure"
       - "traefik.http.routers.storage.tls.certResolver=letsencrypt"
-      - "traefik.http.services.storage.loadbalancer.server.url=https://syn.metaconsulting.au:5001"
+      - "traefik.http.routers.storage.service=storage@docker"
+      - "traefik.http.services.storage.loadbalancer.server.url=${SYNOLOGY_TARGET_URL}"
       # Portainer (HTTP)
-      - "traefik.http.routers.portainer.rule=Host(`sportainer.metaconsulting.au`)"
+      - "traefik.http.routers.portainer.rule=Host(`${PORTAINER_HOST}`)"
       - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.routers.portainer.tls.certResolver=letsencrypt"
-      - "traefik.http.services.portainer.loadbalancer.server.url=http://syn.metaconsulting.au:9000"
+      - "traefik.http.routers.portainer.service=portainer@docker"
+      - "traefik.http.services.portainer.loadbalancer.server.url=${PORTAINER_TARGET_URL}"
+
 
   uptime-kuma:
     image: louislam/uptime-kuma:2
@@ -85,9 +94,11 @@ services:
       - /etc/timezone:/etc/timezone:ro
     environment:
       - UPTIME_KUMA_DISABLE_FRAME_SAMEORIGIN=1
+      - UPTIMEKUMA_HOST=${UPTIMEKUMA_HOST}
+      - HOST=0.0.0.0
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.uptime-kuma.rule=Host(`monitoring.metaconsulting.au`)"
+      - "traefik.http.routers.uptime-kuma.rule=Host(`${UPTIMEKUMA_HOST}`)"
       - "traefik.http.routers.uptime-kuma.entrypoints=websecure"
       - "traefik.http.routers.uptime-kuma.tls.certResolver=letsencrypt"
       - "traefik.http.services.uptime-kuma.loadbalancer.server.port=3001"

@@ -47,8 +47,8 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     ports:
-      - "8080:8080"
-      - "8443:8443"
+      - "${HTTP_PORTS}"
+      - "${HTTPs_PORTS}"
     networks:
       - traefik-net
 

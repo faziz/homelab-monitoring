@@ -16,7 +16,7 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
-      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.address=:8443
       # Use Let's Encrypt production server (or staging for testing)
       # https://acme-staging-v02.api.letsencrypt.org/directory
       - --certificatesresolvers.letsencrypt.acme.caserver=https://acme-v02.api.letsencrypt.org/directory
@@ -48,7 +48,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
     ports:
       - "80:80"
-      - "443:443"
+      - "8443:8443"
     networks:
       - traefik-net
 

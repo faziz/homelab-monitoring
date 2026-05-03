@@ -48,7 +48,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
     ports:
       - "8080:80"
-      - "8443:8443"
+      - "8443:443"
     networks:
       - traefik-net
 

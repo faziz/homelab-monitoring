@@ -48,7 +48,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
     ports:
       - "${HTTP_PORTS}"
-      - "${HTTPs_PORTS}"
+      - "${HTTPS_PORTS}"
     networks:
       - traefik-net
 

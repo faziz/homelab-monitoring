@@ -12,7 +12,7 @@ services:
     command:
       - --log.level=DEBUG
       - --global.sendAnonymousUsage=false
-      - --entrypoints.web.address=:80
+      - --entrypoints.web.address=:8080
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
@@ -47,7 +47,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     ports:
-      - "80:80"
+      - "8080:80"
       - "8443:8443"
     networks:
       - traefik-net

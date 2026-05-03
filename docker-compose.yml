@@ -1,0 +1,99 @@
+# This will monitoring and alert tooling.
+---
+services:
+  traefik:
+    image: traefik:v3.6.14
+    container_name: traefik
+    restart: unless-stopped
+    environment:
+      - CF_API_EMAIL=${CLOUDFLARE_EMAIL}          # optional but recommended
+      - CF_DNS_API_TOKEN=${CF_TOKEN}
+      - CF_ZONE_API_TOKEN=${CF_TOKEN}             # same token
+    command:
+      - --log.level=DEBUG
+      - --global.sendAnonymousUsage=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      - --entrypoints.websecure.address=:443
+      # Use Let's Encrypt production server (or staging for testing)
+      # https://acme-staging-v02.api.letsencrypt.org/directory
+      - --certificatesresolvers.letsencrypt.acme.caserver=https://acme-v02.api.letsencrypt.org/directory
+      - --certificatesresolvers.letsencrypt.acme.email=${ADMIN_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/acme/acme.json
+      # DNS-01 challenge with Cloudflare
+      - --certificatesresolvers.letsencrypt.acme.dnsChallenge.provider=cloudflare
+      # Disable HTTP and TLS challenges
+      - --certificatesresolvers.letsencrypt.acme.dnsChallenge.delayBeforeCheck=30
+      # Use environment variables for Cloudflare credentials
+      - --certificatesresolvers.letsencrypt.acme.dnsChallenge.resolvers=1.1.1.1:53,8.8.8.8:53
+      # Docker provider
+      - --providers.docker.endpoint=unix:///var/run/docker.sock
+      - --providers.docker.exposedbydefault=false
+      - --providers.file.filename=/dynamic.yml
+      # Dashboard
+      - --api.dashboard=true
+      - --api.insecure=false
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`straefik.metaconsulting.au`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certResolver=letsencrypt"
+      - "traefik.http.routers.dashboard.service=api@internal"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - acme:/acme                        # persistent ACME storage
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - traefik-net
+
+  external-routes:
+    image: alpine:latest
+    container_name: external-routes
+    restart: unless-stopped
+    command: ["sh", "-c", "sleep infinity"]
+    networks:
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      # Synology DSM (HTTPS)
+      - "traefik.http.routers.storage.rule=Host(`storage.metaconsulting.au`)"
+      - "traefik.http.routers.storage.entrypoints=websecure"
+      - "traefik.http.routers.storage.tls.certResolver=letsencrypt"
+      - "traefik.http.services.storage.loadbalancer.server.url=https://syn.metaconsulting.au:5001"
+      # Portainer (HTTP)
+      - "traefik.http.routers.portainer.rule=Host(`sportainer.metaconsulting.au`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.tls.certResolver=letsencrypt"
+      - "traefik.http.services.portainer.loadbalancer.server.url=http://syn.metaconsulting.au:9000"
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:2
+    container_name: uptime-kuma
+    restart: unless-stopped
+    networks:
+      - traefik-net
+    volumes:
+      - uptime_kuma_data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - UPTIME_KUMA_DISABLE_FRAME_SAMEORIGIN=1
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uptime-kuma.rule=Host(`alerts.metaconsulting.au`)"
+      - "traefik.http.routers.uptime-kuma.entrypoints=websecure"
+      - "traefik.http.routers.uptime-kuma.tls.certResolver=letsencrypt"
+      - "traefik.http.services.uptime-kuma.loadbalancer.server.port=3001"
+
+networks:
+  traefik-net:
+    name: traefik-net
+
+volumes:
+  acme:
+  uptime_kuma_data:
